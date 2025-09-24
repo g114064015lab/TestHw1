@@ -1,5 +1,3 @@
-# Workflow: 開發與部署 Simple Linear Regression App
-
 # Workflow: Develop and Deploy Simple Linear Regression App
 
 1.0 **Project Initialization and Logging**   
