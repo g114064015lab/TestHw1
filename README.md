@@ -1,4 +1,4 @@
-# Simple Linear Regression with CRISP-DM
+📈# Simple Linear Regression with CRISP-DM
 
 ## 🚀 [Demo Site](https://testhw1-w65esfo68vm963kzgsbtce.streamlit.app/)
 This Streamlit app provides an easy way to experiment with linear regression in real time. Users can adjust parameters, visualize the regression line, and evaluate model performance without installing anything locally. It is designed to serve as a hands-on learning tool for both beginners and practitioners who want to quickly prototype and understand linear regression concepts.
