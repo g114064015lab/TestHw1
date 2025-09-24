@@ -39,12 +39,7 @@ A lower MSE value indicates a better model fit, as it means the model's predicti
 
 ## 6. Deployment
 
-The final step of the CRISP-DM process is to deploy our model so that it can be used by others. In this project, we have deployed the model as an interactive web application using Flask, a lightweight web framework for Python.
 
-To run the application, you need to have Python and the required libraries (Flask, scikit-learn, matplotlib, numpy) installed. You can then execute the `main.py` script from your terminal:
+The final step of the CRISP-DM process is to deploy our model so that it can be used by others. In this project, we have deployed the model as an **interactive web application using Streamlit**, a powerful Python framework for building data apps with minimal effort.
 
-```bash
-python main.py
-```
-
-Once the server is running, you can open your web browser and navigate to `http://127.0.0.1:5000` to access the application. The web interface, which has been styled with CSS for a better user experience, will allow you to adjust the data generation parameters, and it will display the resulting data, the fitted regression line, and the calculated MSE in real-time.
+Once deployed, users can directly interact with the model through a simple and intuitive web interface, adjusting parameters such as slope, noise, and dataset size, and immediately viewing the regression results and evaluation metrics.SE in real-time.
