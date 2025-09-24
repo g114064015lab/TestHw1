@@ -1,44 +1,9 @@
-## CRISP-DM Requirements (what the app must DO & SHOW)
+# Prompt: Build a Streamlit App with CRISP-DM Workflow
 
-### 1) Business Understanding
-- At the top, render a concise purpose statement and success criteria (e.g., “maximize test R², minimize RMSE, well-behaved residuals”).
-- Provide a sidebar “About” expander summarizing use cases.
+Create a single-file Streamlit app (`app.py`) that demonstrates **simple linear regression** and follows the **CRISP-DM methodology** throughout. At the top of the app, briefly explain the business goal and success criteria, and provide an “About” expander in the sidebar that summarizes possible use cases. The app should support both synthetic data generation (with slope, noise, and number of points controls) and CSV upload, where the user can pick one numeric feature column and one numeric target column. For data understanding, show dataset shape, missing values, descriptive statistics, Pearson correlation, and plots using matplotlib (scatter plot with optional fitted line, and histograms for feature and target).
 
-### 2) Data Understanding
-- Two data sources:
-  - **Synthetic generator** (keep your existing slope/noise/points).
-  - **CSV upload** (user selects one numeric feature column and one numeric target column).
-- Show:
-  - Shape, NA counts, descriptive stats.
-  - Pearson correlation (feature vs target).
-  - Plots (use matplotlib only; no seaborn):
-    - Scatter (feature vs target) with optional fitted line toggle.
-    - Histograms for feature and target.
+For data preparation, ensure missing values in the selected columns are removed and report how many rows were dropped. Offer an optional IQR-based winsorization checkbox for outlier handling. Include sidebar controls for test size and random state in train/test split. Add an option for polynomial features expansion via a slider (default degree = 1), making sure there’s no leakage, and build a scikit-learn pipeline with PolynomialFeatures (if chosen) followed by LinearRegression.
 
-### 3) Data Preparation
-- Handle missing values by dropping rows containing NA in the chosen columns; report how many removed.
-- Optional **outlier handling**: IQR-based winsorization checkbox; report bounds and how many values affected.
-- Train/test split with sidebar controls: `test_size` (default 0.2), `random_state` (default 42).
-- Optional **PolynomialFeatures** degree slider (default 1 = off). **No leakage**: fit transforms on train only.
-- Build a **scikit-learn Pipeline**: [PolynomialFeatures?] → `LinearRegression(fit_intercept=True)`.
+In the modeling stage, fit the pipeline on the training set, display the intercept and coefficients, and additionally run a statsmodels OLS regression on the training set to provide p-values, confidence intervals, and the Durbin–Watson statistic. Allow users to download the full OLS summary as a text file. For evaluation, compute metrics (MAE, RMSE, R²) on both train and test sets, and provide residual diagnostics: residuals vs fitted values, QQ plot, histogram of residuals, and residuals vs feature. Add brief interpretation notes about potential issues like heteroscedasticity, and if results look poor with a linear fit, suggest trying a higher polynomial degree.
 
-### 4) Modeling
-- Fit on train; show learned intercept and slope(s).
-- Also fit a **statsmodels OLS** on the train set to provide:
-  - p-values, confidence intervals, and Durbin–Watson statistic.
-- Provide a downloadable text file of the OLS summary.
-
-### 5) Evaluation
-- Report metrics on **train** and **test**: MAE, RMSE, R².
-- Residual diagnostics on test:
-  - Residuals vs fitted
-  - QQ plot
-  - Histogram of residuals
-  - Residuals vs feature
-- Add short interpretation bullets (e.g., heteroscedasticity hints).
-- If diagnostics look poor and `poly_degree == 1`, show a hint to try higher degree.
-
-### 6) Deployment (lightweight)
-- Button to **download the trained pipeline** as `model.joblib`.
-- Text input to **predict from a single feature value** using the trained pipeline; display the prediction.
-- Button to **download a Markdown report** summarizing: data source, parameters, coefficients, metrics, residual checks, and recommended next steps.
+Finally, for a lightweight deployment, let users download the trained pipeline as `model.joblib`, input a single feature value to generate a prediction, and export a Markdown report summarizing the workflow, including data source, preprocessing, model parameters, coefficients, metrics, residual checks, and suggested next steps. Use only numpy, pandas, scikit-learn, matplotlib, statsmodels, scipy (if needed), joblib, and streamlit. No seaborn, no internet calls. Structure code cleanly with functions, docstrings, type hints, and caching where appropriate, and handle errors gracefully.
