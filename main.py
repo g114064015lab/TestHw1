@@ -1,96 +1,166 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
+from sklearn.linear_model import LinearRegression
 
-# ----------------------------
+# ---------------------------------------
 # Data generation
-# ----------------------------
-def generate_data(a: float, n_points: int, noise: float, seed: int = 42):
-    """Generate synthetic data for linear regression."""
+# ---------------------------------------
+def generate_clean_data(a: float, n_points: int, noise: float, seed: int = 42):
+    """
+    Make clean linear data: x in [0,10], y = a*x + epsilon, epsilon ~ N(0, noise^2).
+    Returns X (n,1), y (n,)
+    """
     rng = np.random.default_rng(seed)
     X = np.linspace(0, 10, n_points)
     y = a * X + rng.normal(0, noise, n_points)
     return X.reshape(-1, 1), y
 
-# ----------------------------
-# Train / evaluate
-# ----------------------------
-def train_and_evaluate_model(X: np.ndarray, y: np.ndarray, test_size: float = 0.2, seed: int = 42):
-    """Train a linear regression model and evaluate it."""
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=seed
-    )
+def inject_outliers(
+    X: np.ndarray,
+    y: np.ndarray,
+    n_outliers: int,
+    magnitude: float,
+    seed: int = 123,
+):
+    """
+    Inject 'n_outliers' extreme points by adding +/- magnitude * std(y) to y
+    at randomly chosen x positions. Returns:
+      X_all, y_all, outlier_mask (len=n_total)
+    """
+    rng = np.random.default_rng(seed)
+    n = len(y)
+    if n_outliers <= 0:
+        return X, y, np.zeros(n, dtype=bool)
+
+    # 隨機抽 outlier 的位置（也可以生成全新點，這裡採「覆寫部分 y」的方式）
+    idx = rng.choice(np.arange(n), size=min(n_outliers, n), replace=False)
+    y_new = y.copy()
+    bump = magnitude * np.std(y)  # 以資料尺度決定幅度
+    signs = rng.choice(np.array([-1.0, 1.0]), size=len(idx))
+    y_new[idx] = y_new[idx] + signs * bump
+
+    mask = np.zeros(n, dtype=bool)
+    mask[idx] = True
+    return X, y_new, mask
+
+# ---------------------------------------
+# Fit helpers
+# ---------------------------------------
+def fit_line(X: np.ndarray, y: np.ndarray) -> LinearRegression:
     model = LinearRegression()
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
-    mse = mean_squared_error(y_test, y_pred)
-    return model, mse, X_train, y_train, X_test, y_test, y_pred
+    model.fit(X, y)
+    return model
 
-# ----------------------------
+# ---------------------------------------
 # Streamlit UI
-# ----------------------------
-st.title("📈 Simple Linear Regression")
+# ---------------------------------------
+st.set_page_config(page_title="Linear Regression — Outliers Effect", page_icon="📉")
+st.title("📉 Linear Regression — Effect of Outliers")
 
-# Sidebar controls (sliders)
-st.sidebar.header("Parameters")
-a = st.sidebar.slider("Slope (a)", min_value=-10.0, max_value=10.0, value=2.0, step=0.1)
-noise = st.sidebar.slider("Noise (std dev)", min_value=0.0, max_value=10.0, value=1.0, step=0.1)
-n_points = st.sidebar.slider("Number of points", min_value=10, max_value=1000, value=50, step=1)
-test_size = st.sidebar.slider("Test size", min_value=0.1, max_value=0.5, value=0.2, step=0.05)
-seed = st.sidebar.number_input("Random state", value=42, step=1)
+with st.sidebar.expander("About"):
+    st.markdown(
+        "- This demo shows **how a few outliers can tilt the regression line**.\n"
+        "- The model is fit on the **entire dataset** (no train/test split).\n"
+        "- Purple points are injected outliers; compare coefficients with/without them."
+    )
 
-# Generate data and train model
-X, y = generate_data(a, n_points, noise, seed=int(seed))
-model, mse, X_train, y_train, X_test, y_test, y_pred = train_and_evaluate_model(
-    X, y, test_size=float(test_size), seed=int(seed)
+st.sidebar.header("Data (clean)")
+a = st.sidebar.slider("Slope (a)", -10.0, 10.0, 2.0, 0.1)
+noise = st.sidebar.slider("Noise (std)", 0.0, 10.0, 2.0, 0.1)
+n_points = st.sidebar.slider("Number of points", 50, 1000, 400, 10)
+seed = st.sidebar.number_input("Random seed", value=42, step=1)
+
+st.sidebar.header("Outliers")
+n_outliers = st.sidebar.slider("Number of outliers", 0, 10, 5, 1)
+magnitude = st.sidebar.slider("Outlier magnitude (× std of y)", 2.0, 20.0, 8.0, 0.5)
+out_seed = st.sidebar.number_input("Outlier seed", value=123, step=1)
+
+# Generate + inject outliers
+X_clean, y_clean = generate_clean_data(a, n_points, noise, seed=int(seed))
+X_all, y_all, out_mask = inject_outliers(
+    X_clean, y_clean, n_outliers=int(n_outliers), magnitude=float(magnitude), seed=int(out_seed)
 )
 
-# ----------------------------
-# Results
-# ----------------------------
-st.subheader("Results")
-st.write(f"**Mean Squared Error (Test):** {mse:.4f}")
+# Fit models
+model_clean = fit_line(X_clean, y_clean)
+model_out = fit_line(X_all, y_all)
 
-# Model coefficients (intercept & slope)
-st.subheader("Model Coefficients")
-st.write(
-    f"- **Intercept:** {model.intercept_:.4f}\n"
-    f"- **Slope (coef for X):** {model.coef_[0]:.4f}"
+# Coefficients table
+coef_df = pd.DataFrame(
+    {
+        "Scenario": ["Without Outliers", "With Outliers"],
+        "Intercept": [model_clean.intercept_, model_out.intercept_],
+        "Slope": [model_clean.coef_[0], model_out.coef_[0]],
+    }
 )
+coef_df["Δ Intercept"] = coef_df["Intercept"] - coef_df["Intercept"].iloc[0]
+coef_df["Δ Slope"] = coef_df["Slope"] - coef_df["Slope"].iloc[0]
 
-# ----------------------------
-# Plot: data & fitted line
-# ----------------------------
-fig, ax = plt.subplots(figsize=(8, 6))
-ax.scatter(X_train, y_train, label='Training data', alpha=0.7)
-ax.scatter(X_test, y_test, label='Testing data', alpha=0.7)
+st.subheader("Model Coefficients (Comparison)")
+st.dataframe(coef_df.style.format({"Intercept": "{:.4f}", "Slope": "{:.4f}", "Δ Intercept": "{:+.4f}", "Δ Slope": "{:+.4f}"}))
 
-# Draw regression line across the full X-range for a clean line
-x_line = np.linspace(X.min(), X.max(), 200).reshape(-1, 1)
-y_line = model.predict(x_line)
-ax.plot(x_line, y_line, linewidth=2, label='Regression line')
+# ---------------------------------------
+# Plot: scatter + regression line (with outliers)
+# ---------------------------------------
+fig, ax = plt.subplots(figsize=(9, 6))
 
-ax.set_title('Simple Linear Regression')
-ax.set_xlabel('X')
-ax.set_ylabel('y')
-ax.legend()
+# base points (non-outliers)
+base_mask = ~out_mask
+ax.scatter(X_all[base_mask, 0], y_all[base_mask], s=35, alpha=0.7, label="Generated Data", zorder=1)
+
+# outliers
+if out_mask.any():
+    ax.scatter(
+        X_all[out_mask, 0], y_all[out_mask], s=80, facecolor="#6A0DAD", edgecolor="black",
+        alpha=0.95, label="Outliers", zorder=2
+    )
+    # annotate each outlier
+    for i, (xx, yy) in enumerate(zip(X_all[out_mask, 0], y_all[out_mask])):
+        ax.annotate(
+            f"Outlier",
+            (xx, yy),
+            textcoords="offset points",
+            xytext=(5, -10),
+            fontsize=9,
+            color="#6A0DAD",
+            weight="bold",
+        )
+
+# regression line (fitted on ALL points -> 展示被拉歪的線)
+x_line = np.linspace(float(X_all.min()), float(X_all.max()), 400).reshape(-1, 1)
+y_line_out = model_out.predict(x_line)
+ax.plot(x_line[:, 0], y_line_out, color="crimson", linewidth=2.5, label="Linear Regression (with outliers)", zorder=3)
+
+ax.set_title("Linear Regression with Outliers (fit on whole dataset)")
+ax.set_xlabel("X")
+ax.set_ylabel("Y")
+ax.legend(loc="upper left")
+ax.grid(alpha=0.15)
 st.pyplot(fig)
 
-# ----------------------------
-# Top 5 Outliers (by absolute residuals on TEST set)
-# ----------------------------
-st.subheader("Top 5 Outliers (Test Set)")
-residuals = y_test - y_pred
-outlier_df = pd.DataFrame({
-    "X": X_test.flatten(),
-    "y_true": y_test,
-    "y_pred": y_pred,
-    "residual": residuals,
-    "abs_residual": np.abs(residuals)
-}).sort_values("abs_residual", ascending=False).head(5)
+# ---------------------------------------
+# Optional: also show the clean line for visual delta
+# ---------------------------------------
+show_clean_line = st.checkbox("Overlay regression line without outliers (for reference)", value=True)
+if show_clean_line:
+    fig2, ax2 = plt.subplots(figsize=(9, 6))
+    # all points still shown，方便比較
+    ax2.scatter(X_all[base_mask, 0], y_all[base_mask], s=35, alpha=0.7, label="Generated Data")
+    if out_mask.any():
+        ax2.scatter(X_all[out_mask, 0], y_all[out_mask], s=80, facecolor="#6A0DAD", edgecolor="black", alpha=0.95, label="Outliers")
 
-st.dataframe(outlier_df.reset_index(drop=True))
+    y_line_clean = model_clean.predict(x_line)
+    y_line_out2 = model_out.predict(x_line)
+    ax2.plot(x_line[:, 0], y_line_clean, linewidth=2.5, label="Line (without outliers)")
+    ax2.plot(x_line[:, 0], y_line_out2, linewidth=2.5, color="crimson", label="Line (with outliers)")
+
+    ax2.set_title("Overlay: clean vs outlier-affected regression lines")
+    ax2.set_xlabel("X")
+    ax2.set_ylabel("Y")
+    ax2.legend(loc="upper left")
+    ax2.grid(alpha=0.15)
+    st.pyplot(fig2)
+
+
