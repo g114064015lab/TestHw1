@@ -1,7 +1,6 @@
-# Prompt: Verify Implementation Against README.md and Deploy
+# 🌐 Gemini Vibe: Streamlit App Coding & Verification Record
 
-You are tasked with verifying that `main.py` correctly implements the web application as described in `README.md`, then pushing the code to GitHub and running the app via Streamlit.  
-Follow the steps below in order. Be thorough and provide evidence at each step.
+## Task: Check implementation, push to GitHub, and deploy via Streamlit
 
 ---
 
