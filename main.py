@@ -28,15 +28,6 @@ with st.expander("2) Data Understanding (Synthetic)"):
 """
     )
 
-with st.expander("3) Data Preparation / 4) Modeling / 5) Evaluation / 6) Deployment"):
-    st.markdown(
-        """
-- **Data Preparation**：採 **80/20**（預設）切分為訓練/測試集。  
-- **Modeling**：使用 `scikit-learn` 的 `LinearRegression` 擬合 **訓練集**。  
-- **Evaluation**：以 **MSE** 為主要指標，並視覺化訓練/測試資料與回歸線。  
-- **Outliers**：不提供額外 UI；模型訓練完成後，會自動以 **測試集殘差 Z 分數** 高亮可能的離群點。  
-"""
-    )
 
 # ----------------------------
 # Sidebar controls
